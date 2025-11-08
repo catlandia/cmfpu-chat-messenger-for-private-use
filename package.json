@@ -1,0 +1,21 @@
+{
+  "name": "private-secure-chat",
+  "version": "1.0.0",
+  "description": "Privacy-focused browser-based chat application with end-to-end encryption",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "chat",
+    "encryption",
+    "privacy",
+    "secure",
+    "e2e"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

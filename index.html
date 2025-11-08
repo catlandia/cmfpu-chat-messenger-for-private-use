@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private Secure Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="password"],
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="password"]:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            margin-top: 12px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .info {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .chat-container {
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 16px;
+            background: #f5f5f5;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h3 {
+            color: #333;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .message.sent {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.received {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-meta {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .message-input {
+            display: flex;
+            padding: 16px;
+            background: white;
+            border-top: 1px solid #ddd;
+        }
+
+        .message-input input {
+            flex: 1;
+            margin-right: 12px;
+        }
+
+        .message-input button {
+            width: auto;
+            padding: 12px 24px;
+        }
+
+        .users-list {
+            background: #f5f5f5;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .user-item {
+            padding: 12px;
+            background: white;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .online-indicator {
+            width: 8px;
+            height: 8px;
+            background: #4caf50;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .security-badge {
+            background: #4caf50;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            padding: 8px 16px;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .password-strength {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            transition: width 0.3s, background 0.3s;
+            width: 0;
+        }
+
+        .strength-weak { width: 33%; background: #f44336; }
+        .strength-medium { width: 66%; background: #ff9800; }
+        .strength-strong { width: 100%; background: #4caf50; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Master Password Screen -->
+        <div id="masterScreen" class="screen active">
+            <div class="header">
+                <h1>🔒 Private Secure Chat</h1>
+                <p>Enter master password to access the application</p>
+            </div>
+            <div class="content">
+                <div class="info">
+                    <strong>🔐 Maximum Privacy Protection</strong><br>
+                    • Master password required to access app<br>
+                    • Unique password for each user<br>
+                    • End-to-end encryption<br>
+                    • No password storage (enter each time)
+                </div>
+                <div id="masterError" class="error"></div>
+                <div class="form-group">
+                    <label for="masterPassword">Master Password</label>
+                    <input type="password" id="masterPassword" placeholder="Enter master password" autocomplete="off">
+                </div>
+                <button class="btn" onclick="app.verifyMasterPassword()">Access Application</button>
+                <div class="info" style="margin-top: 20px; font-size: 12px;">
+                    First time? Set a master password (min 8 characters)
+                </div>
+            </div>
+        </div>
+
+        <!-- User Authentication Screen -->
+        <div id="authScreen" class="screen">
+            <div class="header">
+                <h1>🔑 User Authentication</h1>
+                <p>Enter your unique credentials</p>
+            </div>
+            <div class="content">
+                <div id="authError" class="error"></div>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Your username" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="userPassword">Your Unique Password</label>
+                    <input type="password" id="userPassword" placeholder="Your unique password (min 12 characters)" autocomplete="off" oninput="app.checkPasswordStrength(this.value)">
+                    <div class="password-strength">
+                        <div id="passwordStrengthBar" class="password-strength-bar"></div>
+                    </div>
+                </div>
+                <button class="btn" onclick="app.authenticate()">Enter Chat</button>
+                <button class="btn btn-secondary" onclick="app.logout()">Back</button>
+                <div class="info" style="margin-top: 20px;">
+                    <strong>⚠️ Important:</strong> Your password is never stored. You must enter it every time you access the chat. Use a strong, memorable password.
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Screen -->
+        <div id="chatScreen" class="screen">
+            <div class="header">
+                <h1>💬 Secure Chat</h1>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px;">
+                    <span class="security-badge">🔒 ENCRYPTED</span>
+                    <button class="logout-btn" onclick="app.logout()">Logout</button>
+                </div>
+            </div>
+            <div class="content" style="padding: 0;">
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <h3 id="chatUsername">Chat</h3>
+                        <span style="font-size: 14px; color: #666;">End-to-End Encrypted</span>
+                    </div>
+                    <div id="messages" class="messages"></div>
+                    <div class="message-input">
+                        <input type="text" id="messageInput" placeholder="Type your encrypted message..." onkeypress="if(event.key==='Enter') app.sendMessage()">
+                        <button class="btn" onclick="app.sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            currentUser: null,
+            userPassword: null,
+            masterPasswordHash: null,
+            messageCheckInterval: null,
+
+            // Initialize app
+            async init() {
+                this.showScreen('masterScreen');
+                // Check for stored master password hash
+                const stored = sessionStorage.getItem('masterHash');
+                if (stored) {
+                    this.masterPasswordHash = stored;
+                }
+            },
+
+            // Show specific screen
+            showScreen(screenId) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(screenId).classList.add('active');
+            },
+
+            // Show error message
+            showError(elementId, message) {
+                const el = document.getElementById(elementId);
+                el.textContent = message;
+                el.classList.add('show');
+                setTimeout(() => el.classList.remove('show'), 5000);
+            },
+
+            // Hash password using SHA-256
+            async hashPassword(password) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password);
+                const hash = await crypto.subtle.digest('SHA-256', data);
+                return Array.from(new Uint8Array(hash))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('');
+            },
+
+            // Verify master password
+            async verifyMasterPassword() {
+                const password = document.getElementById('masterPassword').value;
+
+                if (password.length < 8) {
+                    this.showError('masterError', 'Master password must be at least 8 characters');
+                    return;
+                }
+
+                const hash = await this.hashPassword(password);
+
+                // Check if master password exists in localStorage
+                const storedHash = localStorage.getItem('masterPasswordHash');
+
+                if (!storedHash) {
+                    // First time setup - set master password
+                    localStorage.setItem('masterPasswordHash', hash);
+                    this.masterPasswordHash = hash;
+                    sessionStorage.setItem('masterHash', hash);
+                    this.showScreen('authScreen');
+                    document.getElementById('masterPassword').value = '';
+                } else if (storedHash === hash) {
+                    // Correct master password
+                    this.masterPasswordHash = hash;
+                    sessionStorage.setItem('masterHash', hash);
+                    this.showScreen('authScreen');
+                    document.getElementById('masterPassword').value = '';
+                } else {
+                    this.showError('masterError', 'Incorrect master password');
+                    document.getElementById('masterPassword').value = '';
+                }
+            },
+
+            // Check password strength
+            checkPasswordStrength(password) {
+                const bar = document.getElementById('passwordStrengthBar');
+                bar.className = 'password-strength-bar';
+
+                if (password.length < 12) {
+                    bar.classList.add('strength-weak');
+                } else if (password.length < 16 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+                    bar.classList.add('strength-medium');
+                } else {
+                    bar.classList.add('strength-strong');
+                }
+            },
+
+            // Authenticate user
+            async authenticate() {
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('userPassword').value;
+
+                if (!username || username.length < 3) {
+                    this.showError('authError', 'Username must be at least 3 characters');
+                    return;
+                }
+
+                if (password.length < 12) {
+                    this.showError('authError', 'Password must be at least 12 characters for maximum security');
+                    return;
+                }
+
+                // Store user credentials in memory only (never in localStorage)
+                this.currentUser = username;
+                this.userPassword = password;
+
+                // Derive encryption key from password
+                this.encryptionKey = await this.deriveKey(password);
+
+                // Initialize chat
+                document.getElementById('chatUsername').textContent = `Chat as ${username}`;
+                document.getElementById('username').value = '';
+                document.getElementById('userPassword').value = '';
+
+                this.showScreen('chatScreen');
+                this.loadMessages();
+
+                // Start checking for new messages
+                this.startMessagePolling();
+            },
+
+            // Derive encryption key from password
+            async deriveKey(password) {
+                const encoder = new TextEncoder();
+                const keyMaterial = await crypto.subtle.importKey(
+                    'raw',
+                    encoder.encode(password),
+                    'PBKDF2',
+                    false,
+                    ['deriveBits', 'deriveKey']
+                );
+
+                return await crypto.subtle.deriveKey(
+                    {
+                        name: 'PBKDF2',
+                        salt: encoder.encode('secure-chat-salt-v1'),
+                        iterations: 100000,
+                        hash: 'SHA-256'
+                    },
+                    keyMaterial,
+                    { name: 'AES-GCM', length: 256 },
+                    false,
+                    ['encrypt', 'decrypt']
+                );
+            },
+
+            // Encrypt message
+            async encryptMessage(message) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(message);
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+
+                const encrypted = await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv: iv },
+                    this.encryptionKey,
+                    data
+                );
+
+                // Combine IV and encrypted data
+                const combined = new Uint8Array(iv.length + encrypted.byteLength);
+                combined.set(iv);
+                combined.set(new Uint8Array(encrypted), iv.length);
+
+                return btoa(String.fromCharCode(...combined));
+            },
+
+            // Decrypt message
+            async decryptMessage(encryptedData) {
+                try {
+                    const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+                    const iv = combined.slice(0, 12);
+                    const data = combined.slice(12);
+
+                    const decrypted = await crypto.subtle.decrypt(
+                        { name: 'AES-GCM', iv: iv },
+                        this.encryptionKey,
+                        data
+                    );
+
+                    const decoder = new TextDecoder();
+                    return decoder.decode(decrypted);
+                } catch (e) {
+                    return '[Unable to decrypt - wrong password]';
+                }
+            },
+
+            // Send message
+            async sendMessage() {
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+
+                if (!message) return;
+
+                // Encrypt message
+                const encrypted = await this.encryptMessage(message);
+
+                // Create message object
+                const messageObj = {
+                    id: Date.now() + Math.random(),
+                    sender: this.currentUser,
+                    encrypted: encrypted,
+                    timestamp: new Date().toISOString()
+                };
+
+                // Store encrypted message
+                const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+                messages.push(messageObj);
+                localStorage.setItem('chatMessages', JSON.stringify(messages));
+
+                // Display message
+                await this.displayMessage(messageObj, true);
+
+                input.value = '';
+            },
+
+            // Display message
+            async displayMessage(messageObj, isSent) {
+                const messagesDiv = document.getElementById('messages');
+                const messageEl = document.createElement('div');
+                messageEl.className = `message ${isSent ? 'sent' : 'received'}`;
+
+                // Decrypt message
+                const decrypted = await this.decryptMessage(messageObj.encrypted);
+
+                const time = new Date(messageObj.timestamp).toLocaleTimeString();
+                messageEl.innerHTML = `
+                    <div>${decrypted}</div>
+                    <div class="message-meta">${messageObj.sender} • ${time}</div>
+                `;
+
+                messagesDiv.appendChild(messageEl);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            },
+
+            // Load messages
+            async loadMessages() {
+                const messagesDiv = document.getElementById('messages');
+                messagesDiv.innerHTML = '';
+
+                const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+
+                for (const msg of messages) {
+                    await this.displayMessage(msg, msg.sender === this.currentUser);
+                }
+            },
+
+            // Start polling for new messages
+            startMessagePolling() {
+                if (this.messageCheckInterval) {
+                    clearInterval(this.messageCheckInterval);
+                }
+
+                let lastMessageCount = (JSON.parse(localStorage.getItem('chatMessages') || '[]')).length;
+
+                this.messageCheckInterval = setInterval(async () => {
+                    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+                    if (messages.length > lastMessageCount) {
+                        await this.loadMessages();
+                        lastMessageCount = messages.length;
+                    }
+                }, 1000);
+            },
+
+            // Logout
+            logout() {
+                // Clear sensitive data from memory
+                this.currentUser = null;
+                this.userPassword = null;
+                this.encryptionKey = null;
+
+                // Clear session storage
+                sessionStorage.removeItem('masterHash');
+
+                // Stop polling
+                if (this.messageCheckInterval) {
+                    clearInterval(this.messageCheckInterval);
+                }
+
+                // Return to master password screen
+                this.showScreen('masterScreen');
+                document.getElementById('masterPassword').value = '';
+            }
+        };
+
+        // Initialize app when page loads
+        window.addEventListener('DOMContentLoaded', () => app.init());
+
+        // Clear sensitive data on page unload
+        window.addEventListener('beforeunload', () => {
+            sessionStorage.clear();
+        });
+    </script>
+</body>
+</html>
