@@ -569,11 +569,20 @@
                 this.socket = io();
 
                 this.socket.on('connect', () => {
-                    console.log('Connected to server');
+                    console.log('✅ Connected to server');
+                });
+
+                this.socket.on('connect_error', (error) => {
+                    console.error('❌ Connection error:', error);
+                    alert('Cannot connect to server. Please make sure the server is running.');
                 });
 
                 this.socket.on('disconnect', () => {
-                    console.log('Disconnected from server');
+                    console.log('⚠️ Disconnected from server');
+                });
+
+                this.socket.on('error', (error) => {
+                    console.error('Socket error:', error);
                 });
 
                 // New message received
@@ -625,8 +634,20 @@
 
             // Register new user
             register() {
+                console.log('🔵 Register button clicked');
+
+                // Check if socket is connected
+                if (!this.socket || !this.socket.connected) {
+                    this.showError('registerError', 'Not connected to server. Please refresh the page.');
+                    console.error('❌ Socket not connected');
+                    return;
+                }
+
                 const username = document.getElementById('registerUsername').value.trim();
                 const password = document.getElementById('registerPassword').value;
+
+                console.log('📝 Username:', username);
+                console.log('🔑 Password length:', password ? password.length : 0);
 
                 if (!username || username.length < 2) {
                     this.showError('registerError', 'Username must be at least 2 characters');
@@ -638,10 +659,18 @@
                     return;
                 }
 
+                console.log('📤 Sending registration request...');
+
                 this.socket.emit('register', { username, password }, (response) => {
+                    console.log('📥 Registration response:', response);
+
                     if (response.success) {
                         this.currentUser = response.username;
                         this.currentUserCode = response.userCode;
+
+                        console.log('✅ Registration successful!');
+                        console.log('👤 Username:', this.currentUser);
+                        console.log('🔑 Unique Code:', this.currentUserCode);
 
                         // Display unique code only
                         document.getElementById('displayUserCode').textContent = response.userCode;
@@ -652,6 +681,7 @@
                         sessionStorage.setItem('userCode', response.userCode);
                         sessionStorage.setItem('password', password);
                     } else {
+                        console.error('❌ Registration failed:', response.error);
                         this.showError('registerError', response.error);
                     }
                 });
