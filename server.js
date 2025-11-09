@@ -11,7 +11,7 @@ const io = socketIO(server);
 const PORT = process.env.PORT || 8000;
 
 // In-memory storage (in production, use a database)
-const users = new Map(); // userCode -> {username, verificationPassword, socketId, status}
+const users = new Map(); // userCode -> {username, password, socketId, status}
 const conversations = new Map(); // conversationId -> {user1Code, user2Code, messages[]}
 const socketToUser = new Map(); // socketId -> userCode
 
@@ -27,17 +27,6 @@ function generateUniqueCode() {
     return crypto.randomBytes(4).toString('hex').toUpperCase();
 }
 
-// Generate verification password (12 characters)
-function generateVerificationPassword() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
-    const randomBytes = crypto.randomBytes(12);
-    for (let i = 0; i < 12; i++) {
-        password += chars[randomBytes[i] % chars.length];
-    }
-    return password;
-}
-
 // Get or create conversation ID between two users
 function getConversationId(code1, code2) {
     return [code1, code2].sort().join('-');
@@ -48,10 +37,14 @@ io.on('connection', (socket) => {
 
     // Register new user
     socket.on('register', (data, callback) => {
-        const { username } = data;
+        const { username, password } = data;
 
         if (!username || username.trim().length < 2) {
             return callback({ success: false, error: 'Username must be at least 2 characters' });
+        }
+
+        if (!password || password.length < 6) {
+            return callback({ success: false, error: 'Password must be at least 6 characters' });
         }
 
         let userCode;
@@ -59,11 +52,9 @@ io.on('connection', (socket) => {
             userCode = generateUniqueCode();
         } while (users.has(userCode));
 
-        const verificationPassword = generateVerificationPassword();
-
         users.set(userCode, {
             username: username.trim(),
-            verificationPassword,
+            password: password,
             socketId: socket.id,
             status: 'online',
             contacts: []
@@ -76,14 +67,13 @@ io.on('connection', (socket) => {
         callback({
             success: true,
             userCode,
-            verificationPassword,
             username: username.trim()
         });
     });
 
     // Login existing user
     socket.on('login', (data, callback) => {
-        const { userCode, verificationPassword } = data;
+        const { userCode, password } = data;
 
         const user = users.get(userCode);
 
@@ -91,8 +81,8 @@ io.on('connection', (socket) => {
             return callback({ success: false, error: 'Invalid user code' });
         }
 
-        if (user.verificationPassword !== verificationPassword) {
-            return callback({ success: false, error: 'Invalid verification password' });
+        if (user.password !== password) {
+            return callback({ success: false, error: 'Invalid password' });
         }
 
         // Update user's socket ID and status
@@ -294,7 +284,7 @@ server.listen(PORT, () => {
     console.log('Features:');
     console.log('  ✓ Real-time 1-to-1 chat');
     console.log('  ✓ Auto-generated unique codes');
-    console.log('  ✓ Auto-generated passwords');
+    console.log('  ✓ User-chosen passwords');
     console.log('  ✓ End-to-end encryption');
     console.log('  ✓ No master password required');
     console.log('');

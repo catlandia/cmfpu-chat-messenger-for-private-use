@@ -415,16 +415,16 @@
         <div id="welcomeScreen" class="screen active">
             <div class="header">
                 <h1>🔒 Private Secure Chat</h1>
-                <p>Real-time encrypted messaging with auto-generated credentials</p>
+                <p>Real-time encrypted messaging with unique connection codes</p>
             </div>
             <div class="content">
                 <div class="info">
                     <strong>🔐 Privacy Features:</strong><br>
                     • No password required to enter the app<br>
-                    • Auto-generated unique codes for each user<br>
-                    • Auto-generated verification passwords<br>
+                    • Auto-generated unique codes for connecting<br>
+                    • Choose your own password<br>
                     • Real-time 1-to-1 encrypted chat<br>
-                    • Connect using unique codes
+                    • Connect to others using their unique codes
                 </div>
                 <button class="btn" onclick="app.showScreen('registerScreen')">Create New Account</button>
                 <button class="btn btn-secondary" onclick="app.showScreen('loginScreen')">Login to Existing Account</button>
@@ -435,27 +435,20 @@
         <div id="registerScreen" class="screen">
             <div class="header">
                 <h1>✨ Create New Account</h1>
-                <p>Choose your username and get your unique credentials</p>
+                <p>Choose your username and password, get your unique code</p>
             </div>
             <div class="content">
                 <div id="registerError" class="error"></div>
                 <div id="credentialsDisplay" style="display: none;">
                     <div class="credentials">
-                        <h3>⚠️ SAVE THESE CREDENTIALS!</h3>
-                        <p style="margin-bottom: 16px; color: #856404;">You'll need these to login. Save them securely!</p>
+                        <h3>⚠️ SAVE YOUR UNIQUE CODE!</h3>
+                        <p style="margin-bottom: 16px; color: #856404;">You'll need this code to share with others so they can add you. Save it securely!</p>
                         <div class="credential-item">
                             <div>
                                 <strong>Your Unique Code:</strong><br>
                                 <span class="credential-value" id="displayUserCode"></span>
                             </div>
                             <button class="copy-btn" onclick="app.copyToClipboard('displayUserCode')">Copy</button>
-                        </div>
-                        <div class="credential-item">
-                            <div>
-                                <strong>Verification Password:</strong><br>
-                                <span class="credential-value" id="displayPassword"></span>
-                            </div>
-                            <button class="copy-btn" onclick="app.copyToClipboard('displayPassword')">Copy</button>
                         </div>
                     </div>
                     <button class="btn" onclick="app.proceedToChat()">Continue to Chat</button>
@@ -465,7 +458,11 @@
                         <label for="registerUsername">Choose Username</label>
                         <input type="text" id="registerUsername" placeholder="Enter your username" autocomplete="off">
                     </div>
-                    <button class="btn" onclick="app.register()">Generate My Credentials</button>
+                    <div class="form-group">
+                        <label for="registerPassword">Choose Password</label>
+                        <input type="password" id="registerPassword" placeholder="Enter your password (min 6 characters)" autocomplete="off">
+                    </div>
+                    <button class="btn" onclick="app.register()">Create Account</button>
                     <button class="btn btn-secondary" onclick="app.showScreen('welcomeScreen')">Back</button>
                 </div>
             </div>
@@ -475,7 +472,7 @@
         <div id="loginScreen" class="screen">
             <div class="header">
                 <h1>🔑 Login</h1>
-                <p>Enter your unique code and verification password</p>
+                <p>Enter your unique code and password</p>
             </div>
             <div class="content">
                 <div id="loginError" class="error"></div>
@@ -484,8 +481,8 @@
                     <input type="text" id="loginUserCode" placeholder="e.g., A1B2C3D4" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label for="loginPassword">Verification Password</label>
-                    <input type="password" id="loginPassword" placeholder="Your auto-generated password" autocomplete="off">
+                    <label for="loginPassword">Your Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="off">
                 </div>
                 <button class="btn" onclick="app.login()">Login</button>
                 <button class="btn btn-secondary" onclick="app.showScreen('welcomeScreen')">Back</button>
@@ -629,26 +626,31 @@
             // Register new user
             register() {
                 const username = document.getElementById('registerUsername').value.trim();
+                const password = document.getElementById('registerPassword').value;
 
                 if (!username || username.length < 2) {
                     this.showError('registerError', 'Username must be at least 2 characters');
                     return;
                 }
 
-                this.socket.emit('register', { username }, (response) => {
+                if (!password || password.length < 6) {
+                    this.showError('registerError', 'Password must be at least 6 characters');
+                    return;
+                }
+
+                this.socket.emit('register', { username, password }, (response) => {
                     if (response.success) {
                         this.currentUser = response.username;
                         this.currentUserCode = response.userCode;
 
-                        // Display credentials
+                        // Display unique code only
                         document.getElementById('displayUserCode').textContent = response.userCode;
-                        document.getElementById('displayPassword').textContent = response.verificationPassword;
                         document.getElementById('registerForm').style.display = 'none';
                         document.getElementById('credentialsDisplay').style.display = 'block';
 
                         // Store in sessionStorage temporarily
                         sessionStorage.setItem('userCode', response.userCode);
-                        sessionStorage.setItem('verificationPassword', response.verificationPassword);
+                        sessionStorage.setItem('password', password);
                     } else {
                         this.showError('registerError', response.error);
                     }
@@ -657,7 +659,7 @@
 
             // Proceed to chat after registration
             async proceedToChat() {
-                const password = sessionStorage.getItem('verificationPassword');
+                const password = sessionStorage.getItem('password');
                 this.encryptionKey = await this.deriveKey(password);
                 this.showChatScreen();
             },
@@ -672,14 +674,14 @@
                     return;
                 }
 
-                this.socket.emit('login', { userCode, verificationPassword: password }, async (response) => {
+                this.socket.emit('login', { userCode, password }, async (response) => {
                     if (response.success) {
                         this.currentUser = response.username;
                         this.currentUserCode = response.userCode;
                         this.encryptionKey = await this.deriveKey(password);
 
                         sessionStorage.setItem('userCode', userCode);
-                        sessionStorage.setItem('verificationPassword', password);
+                        sessionStorage.setItem('password', password);
 
                         this.showChatScreen();
                     } else {

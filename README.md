@@ -1,14 +1,14 @@
 # 🔒 Private Secure Chat Messenger
 
-A real-time, privacy-focused online chat application with auto-generated credentials and end-to-end encryption. Perfect for private 1-to-1 conversations over the internet.
+A real-time, privacy-focused online chat application with auto-generated unique connection codes and end-to-end encryption. Perfect for private 1-to-1 conversations over the internet.
 
 ## 🎯 Key Features
 
 ### No Barriers to Entry
 - **No password required to access the app** - Start chatting immediately!
-- **Auto-generated unique codes** - Each user gets a unique 8-character code (e.g., A1B2C3D4)
-- **Auto-generated verification passwords** - Secure 12-character passwords automatically created
-- **Easy to use** - Just choose a username and you're ready!
+- **Auto-generated unique codes** - Each user gets a unique 8-character code (e.g., A1B2C3D4) for connecting
+- **Choose your own password** - Set your own secure password
+- **Easy to use** - Just choose a username and password, get your unique code!
 
 ### Private 1-to-1 Chat
 - **Connect via unique codes** - Add contacts by entering their unique code
@@ -20,7 +20,7 @@ A real-time, privacy-focused online chat application with auto-generated credent
 - **End-to-end encryption** - All messages encrypted with AES-256-GCM
 - **Unique encryption keys** - Each user has their own encryption key derived from their password
 - **Encrypted message storage** - Messages stored encrypted on the server
-- **Secure credentials** - Auto-generated passwords with high entropy
+- **Secure credentials** - Unique codes for connecting, user-chosen passwords for security
 
 ## 🚀 Quick Start Guide
 
@@ -43,11 +43,12 @@ The server will start at `http://localhost:8000`
 1. Open `http://localhost:8000` in your web browser
 2. Click "Create New Account"
 3. Enter your desired username
-4. Click "Generate My Credentials"
-5. **IMPORTANT**: Save your credentials!
-   - Your Unique Code (e.g., A1B2C3D4)
-   - Your Verification Password
-6. Click "Continue to Chat"
+4. Choose a secure password (minimum 6 characters)
+5. Click "Create Account"
+6. **IMPORTANT**: Save your unique code!
+   - Your Unique Code (e.g., A1B2C3D4) - Share this with friends so they can add you
+   - Remember your password - You'll need it to login
+7. Click "Continue to Chat"
 
 ### Step 3: Add Contacts
 
@@ -66,12 +67,11 @@ The server will start at `http://localhost:8000`
 ## 🔐 How It Works
 
 ### User Registration
-1. User chooses a username
+1. User chooses a username and password
 2. Server generates:
-   - Unique 8-character code (crypto-secure random)
-   - Secure 12-character verification password
-3. Credentials displayed to user (must save them!)
-4. User can now login anytime with these credentials
+   - Unique 8-character code (crypto-secure random) for connecting with others
+3. Unique code displayed to user (must save it!)
+4. User can now login anytime with their unique code and password
 
 ### Adding Contacts
 1. User enters a contact's unique code
@@ -162,8 +162,8 @@ Then access via your server's IP or domain name.
 
 ### Security Specifications
 
-- **Unique Codes**: 8 hex characters (4 bytes entropy)
-- **Passwords**: 12 characters from 70-character set
+- **Unique Codes**: 8 hex characters (4 bytes entropy) - auto-generated
+- **Passwords**: User-chosen (minimum 6 characters recommended)
 - **Encryption**: AES-256-GCM
 - **Key Derivation**: PBKDF2 with SHA-256, 100,000 iterations
 - **IV**: 12 bytes (96 bits) per message, randomly generated
@@ -174,16 +174,18 @@ Then access via your server's IP or domain name.
 ### Example 1: Two Friends Chatting
 
 **Alice:**
-1. Creates account → Gets code: `AB12CD34`
-2. Shares code with Bob
-3. Adds Bob's code when he shares it
-4. Starts chatting!
+1. Creates account with username "Alice" and her chosen password
+2. Gets auto-generated unique code: `AB12CD34`
+3. Shares code with Bob
+4. Adds Bob's code when he shares it
+5. Starts chatting!
 
 **Bob:**
-1. Creates account → Gets code: `EF56GH78`
-2. Shares code with Alice
-3. Adds Alice's code
-4. Receives Alice's messages instantly!
+1. Creates account with username "Bob" and his chosen password
+2. Gets auto-generated unique code: `EF56GH78`
+3. Shares code with Alice
+4. Adds Alice's code
+5. Receives Alice's messages instantly!
 
 ### Example 2: Multiple Private Conversations
 
@@ -207,11 +209,12 @@ You can have separate 1-to-1 chats with different people:
 ❌ Contact list (stored on server)
 
 ### Best Practices
-1. **Save your credentials** - You can't recover them if lost
-2. **Use strong usernames** - Avoid personally identifiable information
-3. **Share codes securely** - Use a secure channel to exchange codes
-4. **Logout when done** - Especially on shared devices
-5. **Use HTTPS** - Essential for production deployment
+1. **Save your unique code** - Share it with others so they can add you
+2. **Use strong passwords** - Choose a secure password (recommended: 12+ characters, mix of letters, numbers, symbols)
+3. **Remember your password** - You can't recover it if lost
+4. **Share codes securely** - Use a secure channel to exchange unique codes
+5. **Logout when done** - Especially on shared devices
+6. **Use HTTPS** - Essential for production deployment
 
 ## 🛠️ Installation & Development
 
@@ -350,4 +353,4 @@ For issues, questions, or suggestions:
 
 ---
 
-**Remember**: Your privacy is paramount. This app is designed with privacy-first principles. Always use secure connections (HTTPS) and save your credentials safely!
+**Remember**: Your privacy is paramount. This app is designed with privacy-first principles. Only the unique connection codes are auto-generated - you choose your own password. Always use secure connections (HTTPS), choose strong passwords, and save your unique code!
