@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Private Secure Chat</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         * {
             margin: 0;
@@ -25,7 +26,7 @@
             background: white;
             border-radius: 16px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 800px;
+            max-width: 900px;
             width: 100%;
             overflow: hidden;
         }
@@ -126,6 +127,14 @@
             display: block;
         }
 
+        .success {
+            background: #e7f5e7;
+            color: #2e7d32;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
         .info {
             background: #e3f2fd;
             color: #1976d2;
@@ -135,23 +144,157 @@
             font-size: 14px;
         }
 
-        .chat-container {
-            height: 500px;
+        .credentials {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .credentials h3 {
+            color: #856404;
+            margin-bottom: 12px;
+        }
+
+        .credential-item {
+            background: white;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .credential-item strong {
+            color: #333;
+        }
+
+        .credential-value {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 12px;
+            font-size: 12px;
+        }
+
+        .chat-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            height: 600px;
+        }
+
+        .sidebar {
+            background: #f5f5f5;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-info {
+            padding: 16px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .user-info h3 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .user-code {
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .contacts-header {
+            padding: 16px;
+            background: #667eea;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .contacts-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .contact-item {
+            padding: 16px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .contact-item:hover {
+            background: #e0e0e0;
+        }
+
+        .contact-item.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+
+        .status-online {
+            background: #4caf50;
+        }
+
+        .status-offline {
+            background: #9e9e9e;
+        }
+
+        .contact-name {
+            font-weight: 600;
+        }
+
+        .add-contact-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .chat-area {
             display: flex;
             flex-direction: column;
         }
 
         .chat-header {
             padding: 16px;
-            background: #f5f5f5;
+            background: white;
             border-bottom: 1px solid #ddd;
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-
-        .chat-header h3 {
-            color: #333;
         }
 
         .messages {
@@ -205,41 +348,6 @@
             padding: 12px 24px;
         }
 
-        .users-list {
-            background: #f5f5f5;
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .user-item {
-            padding: 12px;
-            background: white;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .online-indicator {
-            width: 8px;
-            height: 8px;
-            background: #4caf50;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-        }
-
-        .security-badge {
-            background: #4caf50;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
         .logout-btn {
             background: #dc3545;
             padding: 8px 16px;
@@ -250,97 +358,179 @@
             font-size: 14px;
         }
 
-        .password-strength {
-            height: 4px;
-            background: #e0e0e0;
-            border-radius: 2px;
-            margin-top: 8px;
-            overflow: hidden;
-        }
-
-        .password-strength-bar {
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
             height: 100%;
-            transition: width 0.3s, background 0.3s;
-            width: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
         }
 
-        .strength-weak { width: 33%; background: #f44336; }
-        .strength-medium { width: 66%; background: #ff9800; }
-        .strength-strong { width: 100%; background: #4caf50; }
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #999;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-state h3 {
+            margin-top: 20px;
+            color: #666;
+        }
+
+        .empty-state p {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Master Password Screen -->
-        <div id="masterScreen" class="screen active">
+        <!-- Welcome Screen -->
+        <div id="welcomeScreen" class="screen active">
             <div class="header">
                 <h1>🔒 Private Secure Chat</h1>
-                <p>Enter master password to access the application</p>
+                <p>Real-time encrypted messaging with auto-generated credentials</p>
             </div>
             <div class="content">
                 <div class="info">
-                    <strong>🔐 Maximum Privacy Protection</strong><br>
-                    • Master password required to access app<br>
-                    • Unique password for each user<br>
-                    • End-to-end encryption<br>
-                    • No password storage (enter each time)
+                    <strong>🔐 Privacy Features:</strong><br>
+                    • No password required to enter the app<br>
+                    • Auto-generated unique codes for each user<br>
+                    • Auto-generated verification passwords<br>
+                    • Real-time 1-to-1 encrypted chat<br>
+                    • Connect using unique codes
                 </div>
-                <div id="masterError" class="error"></div>
-                <div class="form-group">
-                    <label for="masterPassword">Master Password</label>
-                    <input type="password" id="masterPassword" placeholder="Enter master password" autocomplete="off">
+                <button class="btn" onclick="app.showScreen('registerScreen')">Create New Account</button>
+                <button class="btn btn-secondary" onclick="app.showScreen('loginScreen')">Login to Existing Account</button>
+            </div>
+        </div>
+
+        <!-- Register Screen -->
+        <div id="registerScreen" class="screen">
+            <div class="header">
+                <h1>✨ Create New Account</h1>
+                <p>Choose your username and get your unique credentials</p>
+            </div>
+            <div class="content">
+                <div id="registerError" class="error"></div>
+                <div id="credentialsDisplay" style="display: none;">
+                    <div class="credentials">
+                        <h3>⚠️ SAVE THESE CREDENTIALS!</h3>
+                        <p style="margin-bottom: 16px; color: #856404;">You'll need these to login. Save them securely!</p>
+                        <div class="credential-item">
+                            <div>
+                                <strong>Your Unique Code:</strong><br>
+                                <span class="credential-value" id="displayUserCode"></span>
+                            </div>
+                            <button class="copy-btn" onclick="app.copyToClipboard('displayUserCode')">Copy</button>
+                        </div>
+                        <div class="credential-item">
+                            <div>
+                                <strong>Verification Password:</strong><br>
+                                <span class="credential-value" id="displayPassword"></span>
+                            </div>
+                            <button class="copy-btn" onclick="app.copyToClipboard('displayPassword')">Copy</button>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="app.proceedToChat()">Continue to Chat</button>
                 </div>
-                <button class="btn" onclick="app.verifyMasterPassword()">Access Application</button>
-                <div class="info" style="margin-top: 20px; font-size: 12px;">
-                    First time? Set a master password (min 8 characters)
+                <div id="registerForm">
+                    <div class="form-group">
+                        <label for="registerUsername">Choose Username</label>
+                        <input type="text" id="registerUsername" placeholder="Enter your username" autocomplete="off">
+                    </div>
+                    <button class="btn" onclick="app.register()">Generate My Credentials</button>
+                    <button class="btn btn-secondary" onclick="app.showScreen('welcomeScreen')">Back</button>
                 </div>
             </div>
         </div>
 
-        <!-- User Authentication Screen -->
-        <div id="authScreen" class="screen">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="screen">
             <div class="header">
-                <h1>🔑 User Authentication</h1>
-                <p>Enter your unique credentials</p>
+                <h1>🔑 Login</h1>
+                <p>Enter your unique code and verification password</p>
             </div>
             <div class="content">
-                <div id="authError" class="error"></div>
+                <div id="loginError" class="error"></div>
                 <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" placeholder="Your username" autocomplete="off">
+                    <label for="loginUserCode">Your Unique Code</label>
+                    <input type="text" id="loginUserCode" placeholder="e.g., A1B2C3D4" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label for="userPassword">Your Unique Password</label>
-                    <input type="password" id="userPassword" placeholder="Your unique password (min 12 characters)" autocomplete="off" oninput="app.checkPasswordStrength(this.value)">
-                    <div class="password-strength">
-                        <div id="passwordStrengthBar" class="password-strength-bar"></div>
-                    </div>
+                    <label for="loginPassword">Verification Password</label>
+                    <input type="password" id="loginPassword" placeholder="Your auto-generated password" autocomplete="off">
                 </div>
-                <button class="btn" onclick="app.authenticate()">Enter Chat</button>
-                <button class="btn btn-secondary" onclick="app.logout()">Back</button>
-                <div class="info" style="margin-top: 20px;">
-                    <strong>⚠️ Important:</strong> Your password is never stored. You must enter it every time you access the chat. Use a strong, memorable password.
-                </div>
+                <button class="btn" onclick="app.login()">Login</button>
+                <button class="btn btn-secondary" onclick="app.showScreen('welcomeScreen')">Back</button>
             </div>
         </div>
 
         <!-- Chat Screen -->
         <div id="chatScreen" class="screen">
             <div class="header">
-                <h1>💬 Secure Chat</h1>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px;">
-                    <span class="security-badge">🔒 ENCRYPTED</span>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1>💬 Private Chat</h1>
+                        <p style="margin-top: 8px;">End-to-end encrypted messaging</p>
+                    </div>
                     <button class="logout-btn" onclick="app.logout()">Logout</button>
                 </div>
             </div>
-            <div class="content" style="padding: 0;">
-                <div class="chat-container">
-                    <div class="chat-header">
-                        <h3 id="chatUsername">Chat</h3>
-                        <span style="font-size: 14px; color: #666;">End-to-End Encrypted</span>
+            <div class="chat-layout">
+                <div class="sidebar">
+                    <div class="user-info">
+                        <h3 id="currentUsername"></h3>
+                        <div>Code: <span class="user-code" id="currentUserCode"></span></div>
                     </div>
-                    <div id="messages" class="messages"></div>
-                    <div class="message-input">
+                    <div class="contacts-header">
+                        <span>Contacts</span>
+                        <button class="add-contact-btn" onclick="app.showAddContactModal()">+ Add</button>
+                    </div>
+                    <div class="contacts-list" id="contactsList">
+                        <div class="empty-state" style="padding: 20px;">
+                            <p>No contacts yet.<br>Add someone to start chatting!</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-area">
+                    <div id="chatHeader" class="chat-header" style="display: none;">
+                        <h3 id="chatContactName"></h3>
+                        <span id="chatContactStatus" style="font-size: 14px; color: #666;"></span>
+                    </div>
+                    <div id="messages" class="messages">
+                        <div class="empty-state">
+                            <h3>Welcome to Private Secure Chat!</h3>
+                            <p>Select a contact to start chatting<br>or add a new contact to get started.</p>
+                        </div>
+                    </div>
+                    <div id="messageInputArea" class="message-input" style="display: none;">
                         <input type="text" id="messageInput" placeholder="Type your encrypted message..." onkeypress="if(event.key==='Enter') app.sendMessage()">
                         <button class="btn" onclick="app.sendMessage()">Send</button>
                     </div>
@@ -349,21 +539,69 @@
         </div>
     </div>
 
+    <!-- Add Contact Modal -->
+    <div id="addContactModal" class="modal">
+        <div class="modal-content">
+            <h3>Add New Contact</h3>
+            <div id="addContactError" class="error"></div>
+            <div class="form-group">
+                <label for="contactCode">Enter Unique Code</label>
+                <input type="text" id="contactCode" placeholder="e.g., A1B2C3D4" autocomplete="off">
+            </div>
+            <button class="btn" onclick="app.addContact()">Add Contact</button>
+            <button class="btn btn-secondary" onclick="app.hideAddContactModal()">Cancel</button>
+        </div>
+    </div>
+
     <script>
         const app = {
+            socket: null,
             currentUser: null,
-            userPassword: null,
-            masterPasswordHash: null,
-            messageCheckInterval: null,
+            currentUserCode: null,
+            currentContact: null,
+            contacts: [],
+            encryptionKey: null,
 
             // Initialize app
-            async init() {
-                this.showScreen('masterScreen');
-                // Check for stored master password hash
-                const stored = sessionStorage.getItem('masterHash');
-                if (stored) {
-                    this.masterPasswordHash = stored;
-                }
+            init() {
+                this.connectSocket();
+            },
+
+            // Connect to WebSocket server
+            connectSocket() {
+                this.socket = io();
+
+                this.socket.on('connect', () => {
+                    console.log('Connected to server');
+                });
+
+                this.socket.on('disconnect', () => {
+                    console.log('Disconnected from server');
+                });
+
+                // New message received
+                this.socket.on('new_message', async (data) => {
+                    if (this.currentContact && data.senderCode === this.currentContact.userCode) {
+                        await this.displayMessage(data, false);
+                    }
+                });
+
+                // New contact added
+                this.socket.on('new_contact', (data) => {
+                    this.loadContacts();
+                });
+
+                // Contact status changed
+                this.socket.on('contact_status', (data) => {
+                    const contact = this.contacts.find(c => c.userCode === data.userCode);
+                    if (contact) {
+                        contact.status = data.status;
+                        this.renderContacts();
+                        if (this.currentContact && this.currentContact.userCode === data.userCode) {
+                            this.updateChatHeader();
+                        }
+                    }
+                });
             },
 
             // Show specific screen
@@ -372,7 +610,7 @@
                 document.getElementById(screenId).classList.add('active');
             },
 
-            // Show error message
+            // Show error
             showError(elementId, message) {
                 const el = document.getElementById(elementId);
                 el.textContent = message;
@@ -380,98 +618,235 @@
                 setTimeout(() => el.classList.remove('show'), 5000);
             },
 
-            // Hash password using SHA-256
-            async hashPassword(password) {
-                const encoder = new TextEncoder();
-                const data = encoder.encode(password);
-                const hash = await crypto.subtle.digest('SHA-256', data);
-                return Array.from(new Uint8Array(hash))
-                    .map(b => b.toString(16).padStart(2, '0'))
-                    .join('');
+            // Copy to clipboard
+            copyToClipboard(elementId) {
+                const text = document.getElementById(elementId).textContent;
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Copied to clipboard!');
+                });
             },
 
-            // Verify master password
-            async verifyMasterPassword() {
-                const password = document.getElementById('masterPassword').value;
+            // Register new user
+            register() {
+                const username = document.getElementById('registerUsername').value.trim();
 
-                if (password.length < 8) {
-                    this.showError('masterError', 'Master password must be at least 8 characters');
+                if (!username || username.length < 2) {
+                    this.showError('registerError', 'Username must be at least 2 characters');
                     return;
                 }
 
-                const hash = await this.hashPassword(password);
+                this.socket.emit('register', { username }, (response) => {
+                    if (response.success) {
+                        this.currentUser = response.username;
+                        this.currentUserCode = response.userCode;
 
-                // Check if master password exists in localStorage
-                const storedHash = localStorage.getItem('masterPasswordHash');
+                        // Display credentials
+                        document.getElementById('displayUserCode').textContent = response.userCode;
+                        document.getElementById('displayPassword').textContent = response.verificationPassword;
+                        document.getElementById('registerForm').style.display = 'none';
+                        document.getElementById('credentialsDisplay').style.display = 'block';
 
-                if (!storedHash) {
-                    // First time setup - set master password
-                    localStorage.setItem('masterPasswordHash', hash);
-                    this.masterPasswordHash = hash;
-                    sessionStorage.setItem('masterHash', hash);
-                    this.showScreen('authScreen');
-                    document.getElementById('masterPassword').value = '';
-                } else if (storedHash === hash) {
-                    // Correct master password
-                    this.masterPasswordHash = hash;
-                    sessionStorage.setItem('masterHash', hash);
-                    this.showScreen('authScreen');
-                    document.getElementById('masterPassword').value = '';
-                } else {
-                    this.showError('masterError', 'Incorrect master password');
-                    document.getElementById('masterPassword').value = '';
-                }
+                        // Store in sessionStorage temporarily
+                        sessionStorage.setItem('userCode', response.userCode);
+                        sessionStorage.setItem('verificationPassword', response.verificationPassword);
+                    } else {
+                        this.showError('registerError', response.error);
+                    }
+                });
             },
 
-            // Check password strength
-            checkPasswordStrength(password) {
-                const bar = document.getElementById('passwordStrengthBar');
-                bar.className = 'password-strength-bar';
-
-                if (password.length < 12) {
-                    bar.classList.add('strength-weak');
-                } else if (password.length < 16 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-                    bar.classList.add('strength-medium');
-                } else {
-                    bar.classList.add('strength-strong');
-                }
-            },
-
-            // Authenticate user
-            async authenticate() {
-                const username = document.getElementById('username').value.trim();
-                const password = document.getElementById('userPassword').value;
-
-                if (!username || username.length < 3) {
-                    this.showError('authError', 'Username must be at least 3 characters');
-                    return;
-                }
-
-                if (password.length < 12) {
-                    this.showError('authError', 'Password must be at least 12 characters for maximum security');
-                    return;
-                }
-
-                // Store user credentials in memory only (never in localStorage)
-                this.currentUser = username;
-                this.userPassword = password;
-
-                // Derive encryption key from password
+            // Proceed to chat after registration
+            async proceedToChat() {
+                const password = sessionStorage.getItem('verificationPassword');
                 this.encryptionKey = await this.deriveKey(password);
-
-                // Initialize chat
-                document.getElementById('chatUsername').textContent = `Chat as ${username}`;
-                document.getElementById('username').value = '';
-                document.getElementById('userPassword').value = '';
-
-                this.showScreen('chatScreen');
-                this.loadMessages();
-
-                // Start checking for new messages
-                this.startMessagePolling();
+                this.showChatScreen();
             },
 
-            // Derive encryption key from password
+            // Login
+            login() {
+                const userCode = document.getElementById('loginUserCode').value.trim().toUpperCase();
+                const password = document.getElementById('loginPassword').value;
+
+                if (!userCode || !password) {
+                    this.showError('loginError', 'Please enter both code and password');
+                    return;
+                }
+
+                this.socket.emit('login', { userCode, verificationPassword: password }, async (response) => {
+                    if (response.success) {
+                        this.currentUser = response.username;
+                        this.currentUserCode = response.userCode;
+                        this.encryptionKey = await this.deriveKey(password);
+
+                        sessionStorage.setItem('userCode', userCode);
+                        sessionStorage.setItem('verificationPassword', password);
+
+                        this.showChatScreen();
+                    } else {
+                        this.showError('loginError', response.error);
+                    }
+                });
+            },
+
+            // Show chat screen
+            showChatScreen() {
+                document.getElementById('currentUsername').textContent = this.currentUser;
+                document.getElementById('currentUserCode').textContent = this.currentUserCode;
+                this.showScreen('chatScreen');
+                this.loadContacts();
+            },
+
+            // Load contacts
+            loadContacts() {
+                this.socket.emit('get_contacts', (response) => {
+                    if (response.success) {
+                        this.contacts = response.contacts;
+                        this.renderContacts();
+                    }
+                });
+            },
+
+            // Render contacts list
+            renderContacts() {
+                const container = document.getElementById('contactsList');
+
+                if (this.contacts.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state" style="padding: 20px;">
+                            <p>No contacts yet.<br>Add someone to start chatting!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = this.contacts.map(contact => `
+                    <div class="contact-item ${this.currentContact && this.currentContact.userCode === contact.userCode ? 'active' : ''}"
+                         onclick="app.selectContact('${contact.userCode}')">
+                        <div class="status-dot status-${contact.status}"></div>
+                        <div>
+                            <div class="contact-name">${contact.username}</div>
+                            <div style="font-size: 12px; opacity: 0.7;">${contact.userCode}</div>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            // Select contact to chat
+            selectContact(userCode) {
+                const contact = this.contacts.find(c => c.userCode === userCode);
+                if (!contact) return;
+
+                this.currentContact = contact;
+                this.renderContacts();
+                this.updateChatHeader();
+                this.loadConversation(userCode);
+
+                document.getElementById('chatHeader').style.display = 'flex';
+                document.getElementById('messageInputArea').style.display = 'flex';
+            },
+
+            // Update chat header
+            updateChatHeader() {
+                document.getElementById('chatContactName').textContent = this.currentContact.username;
+                const statusText = this.currentContact.status === 'online' ? '🟢 Online' : '⚫ Offline';
+                document.getElementById('chatContactStatus').textContent = statusText;
+            },
+
+            // Load conversation
+            loadConversation(contactCode) {
+                this.socket.emit('get_conversation', { contactCode }, async (response) => {
+                    if (response.success) {
+                        const messagesDiv = document.getElementById('messages');
+                        messagesDiv.innerHTML = '';
+
+                        for (const msg of response.messages) {
+                            const isSent = msg.senderCode === this.currentUserCode;
+                            await this.displayMessage({
+                                senderCode: msg.senderCode,
+                                senderUsername: isSent ? this.currentUser : this.currentContact.username,
+                                encryptedMessage: msg.encryptedMessage,
+                                timestamp: msg.timestamp
+                            }, isSent);
+                        }
+                    }
+                });
+            },
+
+            // Display message
+            async displayMessage(data, isSent) {
+                const messagesDiv = document.getElementById('messages');
+                const messageEl = document.createElement('div');
+                messageEl.className = `message ${isSent ? 'sent' : 'received'}`;
+
+                const decrypted = await this.decryptMessage(data.encryptedMessage);
+                const time = new Date(data.timestamp).toLocaleTimeString();
+
+                messageEl.innerHTML = `
+                    <div>${decrypted}</div>
+                    <div class="message-meta">${time}</div>
+                `;
+
+                messagesDiv.appendChild(messageEl);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            },
+
+            // Send message
+            async sendMessage() {
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+
+                if (!message || !this.currentContact) return;
+
+                const encrypted = await this.encryptMessage(message);
+                const timestamp = new Date().toISOString();
+
+                this.socket.emit('send_message', {
+                    recipientCode: this.currentContact.userCode,
+                    encryptedMessage: encrypted,
+                    timestamp
+                });
+
+                await this.displayMessage({
+                    senderCode: this.currentUserCode,
+                    senderUsername: this.currentUser,
+                    encryptedMessage: encrypted,
+                    timestamp
+                }, true);
+
+                input.value = '';
+            },
+
+            // Show add contact modal
+            showAddContactModal() {
+                document.getElementById('addContactModal').classList.add('active');
+                document.getElementById('contactCode').value = '';
+            },
+
+            // Hide add contact modal
+            hideAddContactModal() {
+                document.getElementById('addContactModal').classList.remove('active');
+            },
+
+            // Add contact
+            addContact() {
+                const contactCode = document.getElementById('contactCode').value.trim().toUpperCase();
+
+                if (!contactCode) {
+                    this.showError('addContactError', 'Please enter a contact code');
+                    return;
+                }
+
+                this.socket.emit('add_contact', { contactCode }, (response) => {
+                    if (response.success) {
+                        this.hideAddContactModal();
+                        this.loadContacts();
+                    } else {
+                        this.showError('addContactError', response.error);
+                    }
+                });
+            },
+
+            // Derive encryption key
             async deriveKey(password) {
                 const encoder = new TextEncoder();
                 const keyMaterial = await crypto.subtle.importKey(
@@ -508,7 +883,6 @@
                     data
                 );
 
-                // Combine IV and encrypted data
                 const combined = new Uint8Array(iv.length + encrypted.byteLength);
                 combined.set(iv);
                 combined.set(new Uint8Array(encrypted), iv.length);
@@ -532,115 +906,31 @@
                     const decoder = new TextDecoder();
                     return decoder.decode(decrypted);
                 } catch (e) {
-                    return '[Unable to decrypt - wrong password]';
+                    return '[Unable to decrypt]';
                 }
-            },
-
-            // Send message
-            async sendMessage() {
-                const input = document.getElementById('messageInput');
-                const message = input.value.trim();
-
-                if (!message) return;
-
-                // Encrypt message
-                const encrypted = await this.encryptMessage(message);
-
-                // Create message object
-                const messageObj = {
-                    id: Date.now() + Math.random(),
-                    sender: this.currentUser,
-                    encrypted: encrypted,
-                    timestamp: new Date().toISOString()
-                };
-
-                // Store encrypted message
-                const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
-                messages.push(messageObj);
-                localStorage.setItem('chatMessages', JSON.stringify(messages));
-
-                // Display message
-                await this.displayMessage(messageObj, true);
-
-                input.value = '';
-            },
-
-            // Display message
-            async displayMessage(messageObj, isSent) {
-                const messagesDiv = document.getElementById('messages');
-                const messageEl = document.createElement('div');
-                messageEl.className = `message ${isSent ? 'sent' : 'received'}`;
-
-                // Decrypt message
-                const decrypted = await this.decryptMessage(messageObj.encrypted);
-
-                const time = new Date(messageObj.timestamp).toLocaleTimeString();
-                messageEl.innerHTML = `
-                    <div>${decrypted}</div>
-                    <div class="message-meta">${messageObj.sender} • ${time}</div>
-                `;
-
-                messagesDiv.appendChild(messageEl);
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            },
-
-            // Load messages
-            async loadMessages() {
-                const messagesDiv = document.getElementById('messages');
-                messagesDiv.innerHTML = '';
-
-                const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
-
-                for (const msg of messages) {
-                    await this.displayMessage(msg, msg.sender === this.currentUser);
-                }
-            },
-
-            // Start polling for new messages
-            startMessagePolling() {
-                if (this.messageCheckInterval) {
-                    clearInterval(this.messageCheckInterval);
-                }
-
-                let lastMessageCount = (JSON.parse(localStorage.getItem('chatMessages') || '[]')).length;
-
-                this.messageCheckInterval = setInterval(async () => {
-                    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
-                    if (messages.length > lastMessageCount) {
-                        await this.loadMessages();
-                        lastMessageCount = messages.length;
-                    }
-                }, 1000);
             },
 
             // Logout
             logout() {
-                // Clear sensitive data from memory
                 this.currentUser = null;
-                this.userPassword = null;
+                this.currentUserCode = null;
+                this.currentContact = null;
+                this.contacts = [];
                 this.encryptionKey = null;
 
-                // Clear session storage
-                sessionStorage.removeItem('masterHash');
+                sessionStorage.clear();
 
-                // Stop polling
-                if (this.messageCheckInterval) {
-                    clearInterval(this.messageCheckInterval);
+                if (this.socket) {
+                    this.socket.disconnect();
+                    this.connectSocket();
                 }
 
-                // Return to master password screen
-                this.showScreen('masterScreen');
-                document.getElementById('masterPassword').value = '';
+                this.showScreen('welcomeScreen');
             }
         };
 
-        // Initialize app when page loads
+        // Initialize app
         window.addEventListener('DOMContentLoaded', () => app.init());
-
-        // Clear sensitive data on page unload
-        window.addEventListener('beforeunload', () => {
-            sessionStorage.clear();
-        });
     </script>
 </body>
 </html>
