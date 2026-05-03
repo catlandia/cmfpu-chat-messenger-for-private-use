@@ -1,356 +1,90 @@
-# 🔒 Private Secure Chat Messenger
+# CMFPU — Chat Messenger For Private Use
 
-A real-time, privacy-focused online chat application with auto-generated unique connection codes and end-to-end encryption. Perfect for private 1-to-1 conversations over the internet.
+A peer-to-peer end-to-end encrypted chat messenger that lives in a single HTML file.
 
-## 🎯 Key Features
+- No accounts.
+- No servers in the message path. (Public STUN servers are used briefly, only for NAT traversal during the WebRTC handshake; they never see message content.)
+- No build step. No dependencies. No tracking. No telemetry.
+- Cryptographic keys are generated on your device and never leave it.
+- Every message is end-to-end encrypted with AES-256-GCM under a per-session key derived from a hybrid (static + ephemeral) ECDH handshake.
+- Designed to be **frozen** — you save the file, hash it, and that's the version you keep.
 
-### No Barriers to Entry
-- **No password required to access the app** - Start chatting immediately!
-- **Auto-generated unique codes** - Each user gets a unique 8-character code (e.g., A1B2C3D4) for connecting
-- **Choose your own password** - Set your own secure password
-- **Easy to use** - Just choose a username and password, get your unique code!
+## How to use it
 
-### Private 1-to-1 Chat
-- **Connect via unique codes** - Add contacts by entering their unique code
-- **Real-time messaging** - Instant message delivery using WebSocket technology
-- **Online/offline status** - See when your contacts are available
-- **Conversation history** - Messages are stored securely on the server
+### First launch
 
-### Maximum Privacy
-- **End-to-end encryption** - All messages encrypted with AES-256-GCM
-- **Unique encryption keys** - Each user has their own encryption key derived from their password
-- **Encrypted message storage** - Messages stored encrypted on the server
-- **Secure credentials** - Unique codes for connecting, user-chosen passwords for security
+1. Open `index.html` in any modern browser. (If WebRTC misbehaves over `file://`, run `python -m http.server 8000` from this folder and open `http://localhost:8000` instead — some browsers' WebRTC stacks dislike `file://` origins.)
+2. Pick a display name. The app generates an ECDH keypair locally and stores it in IndexedDB. The private key is marked non-extractable and never leaves your device.
+3. Your **8-byte fingerprint** appears in the sidebar (e.g., `ab:cd:ef:12:34:56:78:90`). This is your stable identity. Tell your peers what fingerprint they should expect to see for you, via any second channel (voice call, in person).
 
-## 🚀 Quick Start Guide
+### Adding a peer (manual signaling, no server)
 
-### Step 1: Start the Server
+WebRTC needs to know how to reach the other side. Without a signaling server we do this by hand — once per peer, ever:
 
-First, install dependencies and start the server:
+1. **You:** click `+ Add peer` → `Invite someone` → `Generate invite`. Wait a few seconds while the app gathers ICE candidates. Copy the resulting blob.
+2. Send the blob to your friend through any text channel — Discord, Signal, email, AirDrop, USB stick, even a printed QR if you want. **The blob is not sensitive in the way a password is** — it contains only your public key (designed to be shared) and your IP address.
+3. **Your friend:** opens the app, picks a display name, then `+ Add peer` → `Accept an invite` → pastes your blob → `Generate answer`. Copies their answer blob.
+4. Friend sends their answer back to you the same way.
+5. **You:** paste their answer into the `Their answer` field → `Connect`.
+6. The app derives a fresh per-session symmetric key from both static identities and both ephemeral session keys. Both peers compute the same key locally; nothing secret is transmitted.
+7. **Verify fingerprints.** After connecting, both of you should compare the 8-byte fingerprint shown in the chat header. If they match what each of you expects (from step 3 of First Launch), the connection is genuine. If they don't match, somebody tampered with the blobs in transit — disconnect and try a different sharing channel.
 
-```bash
-# Install dependencies
-npm install
+### Reconnecting later
 
-# Start the server
-npm start
-```
+Sessions don't persist across reloads — WebRTC connections are inherently single-session. Identity, peer list, and message history all persist; the live connection has to be re-established. To reconnect to a peer, do the invite/answer dance again. New ephemerals are generated, a new session key is derived, past messages remain readable.
 
-The server will start at `http://localhost:8000`
+This is a real friction point. See "Roadmap" below.
 
-### Step 2: Create Your Account
+## Threat model
 
-1. Open `http://localhost:8000` in your web browser
-2. Click "Create New Account"
-3. Enter your desired username
-4. Choose a secure password (minimum 6 characters)
-5. Click "Create Account"
-6. **IMPORTANT**: Save your unique code!
-   - Your Unique Code (e.g., A1B2C3D4) - Share this with friends so they can add you
-   - Remember your password - You'll need it to login
-7. Click "Continue to Chat"
+### What CMFPU protects
 
-### Step 3: Add Contacts
+- **Message confidentiality.** Nobody who isn't holding one of the two private keys can decrypt a message — not your ISP, not Discord (if you used it to share invites), not Cloudflare, not Google, not the operator of any STUN server, not any AI model trained on this code. The math is AES-256 + ECDH on P-256, both standardized and unbroken.
+- **Forward secrecy at session granularity.** Each session uses a fresh ephemeral keypair on each side. If your long-term identity private key is compromised tomorrow, the attacker still cannot decrypt past sessions, because the ephemeral private keys for those sessions were dropped when the sessions ended.
+- **Tamper-evidence at handshake.** A man-in-the-middle attacker who alters invite/answer blobs in transit will produce a different fingerprint than your friend expects. The 5-second out-of-band fingerprint check catches this.
 
-1. Ask your friend to create an account and get their unique code
-2. In your chat, click the "+ Add" button
-3. Enter your friend's unique code
-4. Start chatting privately!
+### What CMFPU does NOT protect against
 
-### Step 4: Chat Securely
+- **Endpoint compromise.** If malware is reading your IndexedDB or watching your screen, no crypto helps. Same applies to your friend's device.
+- **Coercion / shoulder-surfing.** If somebody can see your screen, they can read your messages.
+- **Your friend choosing to leak.** They have the plaintext too. Crypto doesn't enforce intent.
+- **Metadata: that you're talking, and to whom.** WebRTC traffic itself reveals IP-to-IP communication patterns; the bootstrap channel reveals who you set up a chat with. If you need metadata privacy, you need Tor or onion routing — out of scope here.
+- **Quantum computers in the 2030s+.** ECDH on P-256 will be breakable by sufficiently large quantum computers via Shor's algorithm. This means the "harvest now, decrypt later" attack is theoretically viable for highly-motivated adversaries. **Post-quantum (ML-KEM-768 hybrid) is the planned next major upgrade — see Roadmap.**
 
-- Select a contact from your list
-- Type your message and press Enter or click Send
-- All messages are automatically encrypted
-- See online/offline status in real-time
+## Verifying the file you're running
 
-## 🔐 How It Works
+Open the About modal (click the version number in the bottom-right corner). The app computes the SHA-256 hash of the HTML file you have loaded. Compare it against the published hash for this version:
 
-### User Registration
-1. User chooses a username and password
-2. Server generates:
-   - Unique 8-character code (crypto-secure random) for connecting with others
-3. Unique code displayed to user (must save it!)
-4. User can now login anytime with their unique code and password
+| Version | SHA-256 of `index.html` |
+| --- | --- |
+| `0.2.1` | `efeb38148d29795387a390d44c9e657e3c808be95dc075dba4842c4db65719fc` |
 
-### Adding Contacts
-1. User enters a contact's unique code
-2. Server verifies the code exists
-3. Both users are added to each other's contact lists
-4. Can now exchange encrypted messages
+If they match, you have the canonical file and no one has slipped extra code in.
 
-### Message Encryption
-1. User password derives encryption key (PBKDF2, 100k iterations)
-2. Each message encrypted with AES-256-GCM
-3. Unique IV (initialization vector) per message
-4. Encrypted message sent to server via WebSocket
-5. Server stores encrypted message
-6. Recipient receives and decrypts with their own key
+## Design philosophy
 
-### Real-Time Communication
-- WebSocket connection for instant delivery
-- Server notifies when contacts come online/offline
-- Messages delivered immediately when recipient is online
-- Messages stored for offline users (delivered on login)
+CMFPU is intended to be **shipped, hashed, and forgotten**. There is no auto-update mechanism, no telemetry, no "phone home." If a critical bug is later discovered, a new version will be published with a new hash, but that decision is left to you — you choose when to upgrade by replacing the file. Until then, the file you have is the file you have, forever.
 
-## 🌐 Using Online (Deploy to Internet)
+This trades the auto-patch safety net for resistance to malicious-update attacks. It's a deliberate choice, not a missing feature.
 
-To make this chat work online for people anywhere in the world:
+## Roadmap
 
-### Option 1: Deploy to Heroku
+Things deliberately deferred from v0.2 to a focused future release:
 
-```bash
-# Install Heroku CLI, then:
-heroku create your-app-name
-git push heroku main
-```
+- **ML-KEM-768 hybrid post-quantum handshake.** Combine current ECDH with NIST-standardized lattice-based key encapsulation so messages stay sealed even against future quantum computers. Requires careful inline-vendoring of `@noble/post-quantum` and full test coverage with the FIPS-203 reference vectors.
+- **QR code generation/scanning** for in-person blob exchange — eliminates the metadata leak of bootstrapping over Discord/etc.
+- **DHT-based peer discovery** (Hyperswarm / mainline DHT) so peers can reconnect without redoing the signaling dance every session. Removes the biggest UX friction point. Still no servers run by us; uses a public peer-finding network.
 
-### Option 2: Deploy to Railway
-
-1. Go to https://railway.app
-2. Connect your GitHub repository
-3. Deploy automatically
-
-### Option 3: Deploy to Your Own Server
-
-```bash
-# On your server:
-git clone your-repo
-cd cmfpu-chat-messenger-for-private-use
-npm install
-PORT=8000 node server.js
-```
-
-Then access via your server's IP or domain name.
-
-### Important for Online Use
-
-- Use HTTPS (required for encryption APIs)
-- Consider using a database (currently uses in-memory storage)
-- Add rate limiting to prevent abuse
-- Implement proper authentication tokens
-- Add message expiration/cleanup
-
-## 💻 Technical Architecture
-
-### Backend (server.js)
-
-- **Express.js** - Web server
-- **Socket.IO** - Real-time WebSocket communication
-- **In-memory storage** - Users, contacts, and messages (use database for production)
-
-#### Key Components:
-- User registration with auto-generated credentials
-- Contact management system
-- 1-to-1 conversation routing
-- Online/offline status tracking
-- Message storage and retrieval
-
-### Frontend (index.html)
-
-- **Vanilla JavaScript** - No framework dependencies
-- **Socket.IO Client** - Real-time connection
-- **Web Crypto API** - End-to-end encryption
-- **Responsive Design** - Works on desktop and mobile
-
-#### Key Features:
-- Welcome/Register/Login screens
-- Contact list with online status
-- Real-time chat interface
-- Message encryption/decryption
-- Credential copy-to-clipboard
-
-### Security Specifications
-
-- **Unique Codes**: 8 hex characters (4 bytes entropy) - auto-generated
-- **Passwords**: User-chosen (minimum 6 characters recommended)
-- **Encryption**: AES-256-GCM
-- **Key Derivation**: PBKDF2 with SHA-256, 100,000 iterations
-- **IV**: 12 bytes (96 bits) per message, randomly generated
-- **Transport**: WebSocket over HTTPS (for production)
-
-## 📱 Usage Examples
-
-### Example 1: Two Friends Chatting
-
-**Alice:**
-1. Creates account with username "Alice" and her chosen password
-2. Gets auto-generated unique code: `AB12CD34`
-3. Shares code with Bob
-4. Adds Bob's code when he shares it
-5. Starts chatting!
-
-**Bob:**
-1. Creates account with username "Bob" and his chosen password
-2. Gets auto-generated unique code: `EF56GH78`
-3. Shares code with Alice
-4. Adds Alice's code
-5. Receives Alice's messages instantly!
-
-### Example 2: Multiple Private Conversations
-
-You can have separate 1-to-1 chats with different people:
-- Each conversation is independent
-- Messages are only visible to the two participants
-- Add as many contacts as you want
-- Each contact sees their own encrypted messages
-
-## 🔒 Privacy & Security
-
-### What's Encrypted
-✅ All messages (end-to-end encrypted)
-✅ Messages stored encrypted on server
-✅ Each user has unique encryption key
-
-### What's NOT Encrypted
-❌ Usernames (visible to server)
-❌ Unique codes (public identifiers)
-❌ Online/offline status (visible to contacts)
-❌ Contact list (stored on server)
-
-### Best Practices
-1. **Save your unique code** - Share it with others so they can add you
-2. **Use strong passwords** - Choose a secure password (recommended: 12+ characters, mix of letters, numbers, symbols)
-3. **Remember your password** - You can't recover it if lost
-4. **Share codes securely** - Use a secure channel to exchange unique codes
-5. **Logout when done** - Especially on shared devices
-6. **Use HTTPS** - Essential for production deployment
-
-## 🛠️ Installation & Development
-
-### Requirements
-- Node.js 14+ (for server)
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- npm or yarn
-
-### Installation
-
-```bash
-# Clone the repository
-git clone <your-repo-url>
-cd cmfpu-chat-messenger-for-private-use
-
-# Install dependencies
-npm install
-
-# Start the server
-npm start
-```
-
-### Development
-
-The server runs on port 8000 by default. You can change it with the PORT environment variable:
-
-```bash
-PORT=3000 npm start
-```
-
-### File Structure
+## File layout
 
 ```
 .
-├── index.html          # Frontend application
-├── server.js           # Backend WebSocket server
-├── package.json        # Node.js dependencies
-├── .gitignore         # Git exclusions
-└── README.md          # This file
+├── index.html      # The entire app — UI, crypto, networking, storage
+└── README.md       # This file
 ```
 
-## 📋 API Documentation (WebSocket Events)
+That's it. There is nothing else.
 
-### Client → Server
+## License
 
-- `register` - Create new account with username
-- `login` - Login with unique code and password
-- `add_contact` - Add contact by unique code
-- `get_contacts` - Retrieve contact list
-- `send_message` - Send encrypted message
-- `get_conversation` - Load conversation history
-
-### Server → Client
-
-- `new_message` - Receive real-time message
-- `new_contact` - Notified when added as contact
-- `contact_status` - Contact online/offline status change
-
-## 🚧 Production Considerations
-
-This is a demonstration application. For production use, consider:
-
-### Database Integration
-Replace in-memory storage with a database:
-- PostgreSQL for user data and contacts
-- MongoDB for message storage
-- Redis for session management
-
-### Enhanced Security
-- Implement JWT authentication tokens
-- Add rate limiting (prevent spam)
-- Hash passwords with bcrypt
-- Add CSRF protection
-- Implement message expiration
-- Add user blocking/reporting
-
-### Scalability
-- Use Redis for WebSocket scaling
-- Implement message queuing
-- Add CDN for static assets
-- Use load balancers
-- Implement database sharding
-
-### Features to Add
-- Group chats
-- File sharing (encrypted)
-- Message deletion
-- Read receipts
-- Typing indicators
-- User profiles
-- Password reset mechanism
-- Two-factor authentication
-
-## 🐛 Troubleshooting
-
-### Can't connect to server
-- Check if server is running (`npm start`)
-- Verify correct port (default: 8000)
-- Check firewall settings
-
-### Messages not sending
-- Check WebSocket connection (console.log)
-- Verify both users are logged in
-- Check server logs for errors
-
-### Can't decrypt messages
-- Ensure you're using correct credentials
-- Verify encryption key derivation
-- Check browser console for errors
-
-### Lost credentials
-- Unfortunately, credentials cannot be recovered
-- You'll need to create a new account
-- This is by design for maximum privacy
-
-## 📄 License
-
-MIT License - Feel free to use, modify, and distribute
-
-## 🤝 Contributing
-
-Contributions welcome! Areas for improvement:
-- Database integration
-- Enhanced security features
-- UI/UX improvements
-- Mobile app version
-- Additional encryption methods
-- Better error handling
-
-## 📞 Support
-
-For issues, questions, or suggestions:
-- Create an issue in the repository
-- Check existing issues for solutions
-- Read the documentation carefully
-
----
-
-**Remember**: Your privacy is paramount. This app is designed with privacy-first principles. Only the unique connection codes are auto-generated - you choose your own password. Always use secure connections (HTTPS), choose strong passwords, and save your unique code!
+MIT.
