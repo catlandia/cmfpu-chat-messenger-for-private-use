@@ -80,10 +80,11 @@ Things deliberately deferred from v0.2 to a focused future release:
 ```
 .
 ├── index.html      # The entire app — UI, crypto, networking, storage
-└── README.md       # This file
+├── README.md       # This file
+└── docs/           # Internal notes for the AI assistant maintaining this project
 ```
 
-That's it. There is nothing else.
+The app itself is one HTML file. `docs/` contains architecture / crypto / decisions / roadmap notes used only when the project is being modified — you do not need to read it to use the app.
 
 ## License
 
